@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Goal } from "@/lib/types";
 import {
   isGoalDone,
@@ -5,6 +8,8 @@ import {
   stepProgress,
   goalProgress,
 } from "@/lib/progress";
+import { makeId } from "@/lib/id";
+import GoalEditor from "@/components/GoalEditor";
 
 const sampleGoal: Goal = {
   id: "g1",
@@ -29,6 +34,15 @@ const sampleGoal: Goal = {
     },
   ],
 };
+
+function emptyGoal(): Goal {
+  return {
+    id: makeId(),
+    title: "",
+    steps: [],
+    createdAt: new Date().toISOString(),
+  };
+}
 
 function Check({ done, size = "h-5 w-5" }: { done: boolean; size?: string }) {
   return (
@@ -55,62 +69,122 @@ function ProgressBar({ percent }: { percent: number }) {
   );
 }
 
+function GoalCard({ goal, onEdit }: { goal: Goal; onEdit: () => void }) {
+  const percent = goalProgress(goal);
+
+  return (
+    <div>
+      <div className="flex items-center gap-3">
+        <Check done={isGoalDone(goal)} size="h-7 w-7" />
+        <h2 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          {goal.title}
+        </h2>
+        <button
+          onClick={onEdit}
+          className="ml-auto rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+        >
+          Edit
+        </button>
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        <ProgressBar percent={percent} />
+        <span className="text-sm font-medium text-zinc-500">{percent}%</span>
+      </div>
+
+      <div className="mt-6 space-y-4">
+        {goal.steps.map((step) => (
+          <section
+            key={step.id}
+            className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          >
+            <div className="flex items-center gap-3">
+              <Check done={isStepDone(step)} />
+              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+                {step.title}
+              </h3>
+              <span className="ml-auto text-xs text-zinc-500">
+                {stepProgress(step)}%
+              </span>
+            </div>
+
+            <ul className="mt-4 space-y-2 border-l border-zinc-200 pl-5 dark:border-zinc-800">
+              {step.tasks.map((task) => (
+                <li key={task.id} className="flex items-center gap-3">
+                  <Check done={task.done} size="h-4 w-4" />
+                  <span
+                    className={
+                      task.done
+                        ? "text-zinc-400 line-through"
+                        : "text-zinc-700 dark:text-zinc-300"
+                    }
+                  >
+                    {task.title}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
-  const percent = goalProgress(sampleGoal);
+  const [goals, setGoals] = useState<Goal[]>([sampleGoal]);
+  const [editing, setEditing] = useState<Goal | null>(null);
+
+  function saveGoal(saved: Goal) {
+    setGoals((prev) => {
+      const exists = prev.some((g) => g.id === saved.id);
+      return exists
+        ? prev.map((g) => (g.id === saved.id ? saved : g))
+        : [...prev, saved];
+    });
+    setEditing(null);
+  }
 
   return (
     <main className="min-h-screen bg-zinc-50 px-6 py-16 dark:bg-zinc-950">
       <div className="mx-auto max-w-2xl">
-        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-          Goal
-        </p>
-        <div className="mt-2 flex items-center gap-3">
-          <Check done={isGoalDone(sampleGoal)} size="h-7 w-7" />
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-            {sampleGoal.title}
-          </h1>
-        </div>
-        <div className="mt-4 flex items-center gap-3">
-          <ProgressBar percent={percent} />
-          <span className="text-sm font-medium text-zinc-500">{percent}%</span>
+        <div className="mb-10 flex items-center justify-between">
+          <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            Task Tree Tracker
+          </span>
+          <button
+            onClick={() => setEditing(emptyGoal())}
+            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
+          >
+            + New Goal
+          </button>
         </div>
 
-        <div className="mt-10 space-y-4">
-          {sampleGoal.steps.map((step) => (
-            <section
-              key={step.id}
-              className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <div className="flex items-center gap-3">
-                <Check done={isStepDone(step)} />
-                <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  {step.title}
-                </h2>
-                <span className="ml-auto text-xs text-zinc-500">
-                  {stepProgress(step)}%
-                </span>
-              </div>
-
-              <ul className="mt-4 space-y-2 border-l border-zinc-200 pl-5 dark:border-zinc-800">
-                {step.tasks.map((task) => (
-                  <li key={task.id} className="flex items-center gap-3">
-                    <Check done={task.done} size="h-4 w-4" />
-                    <span
-                      className={
-                        task.done
-                          ? "text-zinc-400 line-through"
-                          : "text-zinc-700 dark:text-zinc-300"
-                      }
-                    >
-                      {task.title}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
+        {goals.length === 0 ? (
+          <p className="text-center text-zinc-500">
+            No goals yet. Click + New Goal to start.
+          </p>
+        ) : (
+          <div className="space-y-16">
+            {goals.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                onEdit={() => setEditing(goal)}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {editing && (
+        <GoalEditor
+          key={editing.id}
+          initialGoal={editing}
+          onSave={saveGoal}
+          onCancel={() => setEditing(null)}
+        />
+      )}
     </main>
   );
 }
